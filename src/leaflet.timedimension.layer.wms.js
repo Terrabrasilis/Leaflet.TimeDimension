@@ -287,7 +287,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
     _parseTimeDimensionFromCapabilities: function(xml) {
         var layers = xml.querySelectorAll('Layer[queryable="1"]');
-        var layerName = this._baseLayer.wmsParams.layers;
+        var layerName = (this._getCapabilitiesAlternateLayerName)?(this._getCapabilitiesAlternateLayerName):(this._baseLayer.wmsParams.layers);
         var layer = null;
         var times = null;
 
@@ -322,9 +322,8 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
     _getDefaultTimeFromCapabilities: function(xml) {
         var layers = xml.querySelectorAll('Layer[queryable="1"]');
-        var layerName = this._baseLayer.wmsParams.layers;
+        var layerName = (this._getCapabilitiesAlternateLayerName)?(this._getCapabilitiesAlternateLayerName):(this._baseLayer.wmsParams.layers);
         var layer = null;
-        var times = null;
 
         layers.forEach(function(current) {
             if (current.querySelector("Name").innerHTML === layerName) {
@@ -346,11 +345,11 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         var defaultTime = 0;
         var dimensions = layer.querySelectorAll("Dimension[name='time']");
         if (dimensions && dimensions.length && dimensions[0].attributes.default) {
-            defaultTime = dimensions[0].attributes.default;
+            defaultTime = dimensions[0].attributes.default.textContent.trim();
         } else {
             var extents = layer.querySelectorAll("Extent[name='time']");
             if (extents && extents.length && extents[0].attributes.default) {
-                defaultTime = extents[0].attributes.default;
+                defaultTime = extents[0].attributes.default.textContent.trim();
             }
         }
         return defaultTime;
