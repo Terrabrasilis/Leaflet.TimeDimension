@@ -129,6 +129,15 @@ L.Control.TimeDimension = L.Control.extend({
         speedStep: 0.1,
         timeSteps: 1,
         autoPlay: false,
+        formatDate: {
+            /*
+            Use intL options to format date that display
+            https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat
+            */
+            formatMatcher: {year:'numeric',month:'numeric',day:'numeric'},
+            locale: 'en-US',
+            separator: '/'
+        },
         playerOptions: {
             transitionTime: 1000
         },
@@ -589,14 +598,28 @@ L.Control.TimeDimension = L.Control.extend({
     },
 
     _getDisplayDateFormat: function(date) {
-        var timeZone = this._getCurrentTimeZone();
-        if (timeZone.toLowerCase() == 'utc') {
-            return date.toISOString();
+        
+        if(this.options.formatDate){
+            return this._getDisplayDateMasquerade(date);
+        }else{
+            var timeZone = this._getCurrentTimeZone();
+            if (timeZone.toLowerCase() == 'utc') {
+                return date.toISOString();
+            }
+            if (timeZone.toLowerCase() == 'local') {
+                return date.toLocaleString();
+            }
+            return date.toLocaleString([], {timeZone: timeZone, timeZoneName: "short"});
         }
-        if (timeZone.toLowerCase() == 'local') {
-            return date.toLocaleString();
+    },
+    _getDisplayDateMasquerade: function(date) {
+        var dt=new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+        dt=dt.toLocaleDateString(this.options.formatDate.locale,this.options.formatDate.formatMatcher);
+        if(this.options.formatDate.separator){
+            dt=dt.split('/')
+            .join(this.options.formatDate.separator);
         }
-        return date.toLocaleString([], {timeZone: timeZone, timeZoneName: "short"});
+        return dt;
     },
     _getDisplaySpeed: function(fps) {
         return fps + 'fps';
