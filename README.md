@@ -271,6 +271,21 @@ Option                 | Type                       | Default                   
 `player`               | `<L.TimeDimension.Player>` | `undefined`                     | Attach an existing player to that control
 `playerOptions`        | `Object`                   | `{transitionTime: 1000}`        | [Options](#timeDimensionPlayerOptions) for the TimeDimension Player object attached.(Cannot be used with `player` option)
 `timeZones`            | `Array of strings`         | `["UTC", "Local"]`              | Clicking on the date cycles between these
+`formatDate`           | `Object`                   | `{See table below}`             | Options to format date that display, see details below.
+
+
+#### <a name="timeDimensionControlOptions.formatDate"></a>Options
+
+Use [intL](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat#Parameters) options to format date that display
+
+Option                 | Type                       | Default                         | Description
+-----------------------|----------------------------|---------------------------------|------------
+`formatMatcher`        | `Object`                   | `{...}`                         | Options to output date
+`formatMatcher.year`   | `string`                   | `numeric`                       | To year output type
+`formatMatcher.month`  | `string`                   | `numeric`                       | To month output type
+`formatMatcher.day`    | `string`                   | `numeric`                       | To day output type
+`locale`               | `string`                   | `en-US`                         | The locale definition such as 'pt_BR'
+`separator`            | `string`                   | `/`                             | The separator used to output such as '-' to output like this '2019-01-01'
 
 
 ### L.TimeDimension.Player
