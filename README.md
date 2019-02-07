@@ -353,6 +353,12 @@ Update mode can be one of these values: `intersect`, `union`, `replace`, `extrem
 - For the TimeDimension Control:
     - Glyphicons Halflings
 
+- For generate the min.js and min.css:
+    - [Grunt utility](https://gruntjs.com/using-the-cli)
+        - npm install (to install all dependencies)
+        - npm install -g grunt-cli (to install command line utility "grunt")
+        - Then, run `grunt` into root directory of the project
+
 ## Talks
 - Leaflet.TimeDimension: ¡esto se anima!(esp)
 [10as Jornadas SIG libre. Girona 2016](http://www.sigte.udg.edu/jornadassiglibre2016/) |
