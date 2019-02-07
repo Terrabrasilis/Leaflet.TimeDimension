@@ -1,7 +1,7 @@
 /* 
- * Leaflet TimeDimension v1.1.0 - 2017-10-13 
+ * Leaflet TimeDimension v1.1.0 - 2019-02-07 
  * 
- * Copyright 2017 Biel Frontera (ICTS SOCIB) 
+ * Copyright 2019 Biel Frontera (ICTS SOCIB) 
  * datacenter@socib.es 
  * http://www.socib.es/ 
  * 
@@ -14,6 +14,26 @@
  * git://github.com/socib/Leaflet.TimeDimension.git 
  * 
  */
+
+(function (factory, window) {
+  if (typeof define === 'function' && define.amd) {
+    // define an AMD module that relies on leaflet
+    define(['leaflet', 'iso8601-js-period'], factory);
+  } else if (typeof exports === 'object') {
+    // define a Common JS module that relies on leaflet
+    module.exports = factory(require('leaflet'), require('iso8601-js-period'));
+  } else if (typeof window !== 'undefined' && window.L && typeof L !== 'undefined') {
+    // get the iso8601 from the expected to be global nezasa scope
+    var iso8601 = nezasa.iso8601;
+    // attach your plugin to the global L variable
+    window.L.TimeDimension = factory(L, iso8601);
+  }
+  }(function (L, iso8601) {
+    // make sure iso8601 module js period module is available under the nezasa scope
+    if (typeof nezasa === 'undefined') {
+      var nezasa = { iso8601: iso8601 };
+    }
+    // TimeDimension plugin implementation
 /*jshint indent: 4, browser:true*/
 /*global L*/
 /*
@@ -51,7 +71,8 @@ L.TimeDimension = (L.Layer || L.Class).extend({
 
     getCurrentTimeIndex: function () {
         if (this._currentTimeIndex === -1) {
-            return this._availableTimes.length - 1;
+            // select first index when no current index.
+            return (this._availableTimes.length)?(0):(- 1);
         }
         return this._currentTimeIndex;
     },
@@ -291,12 +312,21 @@ L.TimeDimension = (L.Layer || L.Class).extend({
     },
 
     _getDefaultCurrentTime: function () {
-        var index = this._seekNearestTimeIndex(new Date().getTime());
+        var refTime = new Date().getTime();
+        if(this._availableTimes.length){
+            // if lack default Time we define the first Time from the time list as default.
+            refTime = this._availableTimes[0];
+        }
+        var index = this._seekNearestTimeIndex(refTime);
         return this._availableTimes[index];
     },
 
     _seekNearestTimeIndex: function (time) {
         var newIndex = 0;
+        // when default time for layer is one interval (startDate/endDate)
+        if(isNaN(time)){
+            return newIndex;
+        }
         var len = this._availableTimes.length;
         for (; newIndex < len; newIndex++) {
             if (time < this._availableTimes[newIndex]) {
@@ -585,6 +615,19 @@ L.TimeDimension.Util = {
             result = result.concat(a);
         } else if (b.length > 0) {
             result = result.concat(b);
+        }
+        return result;
+    },
+
+    sort_and_deduplicate: function(arr) {
+        arr = arr.slice(0).sort();
+        var result = [];
+        var last = null;
+        for (var i = 0, l = arr.length; i < l; i++) {
+            if (arr[i] !== last){
+                result.push(arr[i]);
+                last = arr[i];
+            }
         }
         return result;
     }
@@ -1005,7 +1048,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
     _parseTimeDimensionFromCapabilities: function(xml) {
         var layers = xml.querySelectorAll('Layer[queryable="1"]');
-        var layerName = this._baseLayer.wmsParams.layers;
+        var layerName = (this._getCapabilitiesAlternateLayerName)?(this._getCapabilitiesAlternateLayerName):(this._baseLayer.wmsParams.layers);
         var layer = null;
         var times = null;
 
@@ -1040,9 +1083,8 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
     _getDefaultTimeFromCapabilities: function(xml) {
         var layers = xml.querySelectorAll('Layer[queryable="1"]');
-        var layerName = this._baseLayer.wmsParams.layers;
+        var layerName = (this._getCapabilitiesAlternateLayerName)?(this._getCapabilitiesAlternateLayerName):(this._baseLayer.wmsParams.layers);
         var layer = null;
-        var times = null;
 
         layers.forEach(function(current) {
             if (current.querySelector("Name").innerHTML === layerName) {
@@ -1064,11 +1106,11 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         var defaultTime = 0;
         var dimensions = layer.querySelectorAll("Dimension[name='time']");
         if (dimensions && dimensions.length && dimensions[0].attributes.default) {
-            defaultTime = dimensions[0].attributes.default;
+            defaultTime = dimensions[0].attributes.default.textContent.trim();
         } else {
             var extents = layer.querySelectorAll("Extent[name='time']");
             if (extents && extents.length && extents[0].attributes.default) {
-                defaultTime = extents[0].attributes.default;
+                defaultTime = extents[0].attributes.default.textContent.trim();
             }
         }
         return defaultTime;
@@ -1312,68 +1354,62 @@ L.TimeDimension.Layer.GeoJson = L.TimeDimension.Layer.extend({
 
     _setAvailableTimes: function() {
         var times = [];
-        this._availableTimes = [];
         var layers = this._baseLayer.getLayers();
         for (var i = 0, l = layers.length; i < l; i++) {
             if (layers[i].feature) {
-                times = L.TimeDimension.Util.union_arrays(
-                    times,
-                    this._getFeatureTimes(layers[i].feature)
-                );
+                var featureTimes = this._getFeatureTimes(layers[i].feature);
+                for (var j = 0, m = featureTimes.length; j < m; j++) {
+                    times.push(featureTimes[j]);
+                }
             }
         }
-        // String dates to ms
-        for (var i = 0, l = times.length; i < l; i++) {
-            var time = times[i]
-            if (typeof time == 'string' || time instanceof String) {
-                time = Date.parse(time.trim());
-            }
-            this._availableTimes.push(time);
-        }
+        this._availableTimes = L.TimeDimension.Util.sort_and_deduplicate(times);
         if (this._timeDimension && (this._updateTimeDimension || this._timeDimension.getAvailableTimes().length == 0)) {
             this._timeDimension.setAvailableTimes(this._availableTimes, this._updateTimeDimensionMode);
         }
     },
 
     _getFeatureTimes: function(feature) {
-        if (!feature.properties) {
-            return [];
+        if (!feature.featureTimes) {
+            if (!feature.properties) {
+                feature.featureTimes = [];
+            } else if (feature.properties.hasOwnProperty('coordTimes')) {
+                feature.featureTimes = feature.properties.coordTimes;
+            } else if (feature.properties.hasOwnProperty('times')) {
+                feature.featureTimes = feature.properties.times;
+            } else if (feature.properties.hasOwnProperty('linestringTimestamps')) {
+                feature.featureTimes = feature.properties.linestringTimestamps;
+            } else if (feature.properties.hasOwnProperty('time')) {
+                feature.featureTimes = [feature.properties.time];
+            } else {
+                feature.featureTimes = [];
+            }
+            // String dates to ms
+            for (var i = 0, l = feature.featureTimes.length; i < l; i++) {
+                var time = feature.featureTimes[i];
+                if (typeof time == 'string' || time instanceof String) {
+                    time = Date.parse(time.trim());
+                    feature.featureTimes[i] = time;
+                }
+            }
         }
-        if (feature.properties.hasOwnProperty('coordTimes')) {
-            return feature.properties.coordTimes;
-        }
-        if (feature.properties.hasOwnProperty('times')) {
-            return feature.properties.times;
-        }
-        if (feature.properties.hasOwnProperty('linestringTimestamps')) {
-            return feature.properties.linestringTimestamps;
-        }
-        if (feature.properties.hasOwnProperty('time')) {
-            return [feature.properties.time];
-        }
-        return [];
+        return feature.featureTimes;
     },
 
     _getFeatureBetweenDates: function(feature, minTime, maxTime) {
-        var featureStringTimes = this._getFeatureTimes(feature);
-        if (featureStringTimes.length == 0) {
+        var featureTimes = this._getFeatureTimes(feature);
+        if (featureTimes.length == 0) {
             return feature;
         }
-        var featureTimes = [];
-        for (var i = 0, l = featureStringTimes.length; i < l; i++) {
-            var time = featureStringTimes[i]
-            if (typeof time == 'string' || time instanceof String) {
-                time = Date.parse(time.trim());
-            }
-            featureTimes.push(time);
-        }
+
+        var index_min = null,
+            index_max = null,
+            l = featureTimes.length;
 
         if (featureTimes[0] > maxTime || featureTimes[l - 1] < minTime) {
             return null;
         }
-        var index_min = null,
-            index_max = null,
-            l = featureTimes.length;
+
         if (featureTimes[l - 1] > minTime) {
             for (var i = 0; i < l; i++) {
                 if (index_min === null && featureTimes[i] > minTime) {
@@ -1725,14 +1761,24 @@ L.Control.TimeDimension = L.Control.extend({
         speedStep: 0.1,
         timeSteps: 1,
         autoPlay: false,
+        formatDate: {
+            /*
+            Use intL options to format date that display
+            https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat
+            */
+            formatMatcher: {year:'numeric',month:'numeric',day:'numeric'},
+            locale: 'en-US',
+            separator: '/'
+        },
         playerOptions: {
             transitionTime: 1000
-        }
+        },
+        timeZones: ['UTC', 'Local']
     },
 
     initialize: function(options) {
         L.Control.prototype.initialize.call(this, options);
-        this._dateUTC = true;
+        this._timeZoneIndex = 0;
         this._timeDimension = this.options.timeDimension || null;
     },
 
@@ -2145,7 +2191,7 @@ L.Control.TimeDimension = L.Control.extend({
     },
 
     _buttonDateClicked: function(){
-        this._toggleDateUTC();
+        this._switchTimeZone();
     },
 
     _sliderTimeValueChanged: function(newValue) {
@@ -2161,20 +2207,51 @@ L.Control.TimeDimension = L.Control.extend({
         this._player.setTransitionTime(1000 / newValue);
     },
 
-    _toggleDateUTC: function() {
-        if (this._dateUTC) {
+    _getCurrentTimeZone: function() {
+        return this.options.timeZones[this._timeZoneIndex];
+    },
+
+    _switchTimeZone: function() {
+        if (this._getCurrentTimeZone().toLowerCase() == 'utc') {
             L.DomUtil.removeClass(this._displayDate, 'utc');
-            this._displayDate.title = 'Local Time';
-        } else {
+        }
+        this._timeZoneIndex = (this._timeZoneIndex + 1) % this.options.timeZones.length;
+        var timeZone = this._getCurrentTimeZone();
+        if (timeZone.toLowerCase() == 'utc') {
             L.DomUtil.addClass(this._displayDate, 'utc');
             this._displayDate.title = 'UTC Time';
+        } else if (timeZone.toLowerCase() == 'local') {
+            this._displayDate.title = 'Local Time';
+        } else {
+            this._displayDate.title = timeZone;
         }
-        this._dateUTC = !this._dateUTC;
+
         this._update();
     },
 
     _getDisplayDateFormat: function(date) {
-        return this._dateUTC ? date.toISOString() : date.toLocaleString();
+        
+        if(this.options.formatDate){
+            return this._getDisplayDateMasquerade(date);
+        }else{
+            var timeZone = this._getCurrentTimeZone();
+            if (timeZone.toLowerCase() == 'utc') {
+                return date.toISOString();
+            }
+            if (timeZone.toLowerCase() == 'local') {
+                return date.toLocaleString();
+            }
+            return date.toLocaleString([], {timeZone: timeZone, timeZoneName: "short"});
+        }
+    },
+    _getDisplayDateMasquerade: function(date) {
+        var dt=new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+        dt=dt.toLocaleDateString(this.options.formatDate.locale,this.options.formatDate.formatMatcher);
+        if(this.options.formatDate.separator){
+            dt=dt.split('/')
+            .join(this.options.formatDate.separator);
+        }
+        return dt;
     },
     _getDisplaySpeed: function(fps) {
         return fps + 'fps';
@@ -2198,3 +2275,7 @@ L.Map.addInitHook(function() {
 L.control.timeDimension = function(options) {
     return new L.Control.TimeDimension(options);
 };
+    
+    return L.TimeDimension;
+  }, window)
+);
