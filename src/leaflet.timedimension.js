@@ -18,6 +18,7 @@ L.TimeDimension = (L.Layer || L.Class).extend({
         this._loadingTimeIndex = -1;
         this._loadingTimeout = this.options.loadingTimeout || 3000;
         this._syncedLayers = [];
+        this._aggregateTimes = this.options.aggregateTimes;
         if (this._availableTimes.length > 0) {
             this.setCurrentTime(this.options.currentTime || this._getDefaultCurrentTime());
         }
@@ -95,7 +96,8 @@ L.TimeDimension = (L.Layer || L.Class).extend({
         console.log('END -- Current time: ' + new Date(time).toISOString());
         this._currentTimeIndex = this._loadingTimeIndex;
         this.fire('timeload', {
-            time: time
+            time: time,
+            aggregateTimes: this._aggregateTimes
         });
         this._loadingTimeIndex = -1;
     },

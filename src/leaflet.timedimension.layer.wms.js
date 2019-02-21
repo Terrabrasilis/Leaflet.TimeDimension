@@ -26,8 +26,11 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
         this._baseLayer.on('load', (function() {
             this._baseLayer.setLoaded(true);
+            this._baseLayer._visible=!options.timeDimension._aggregateTimes;
+            this._baseLayer.redraw();
             this.fire('timeload', {
-                time: this._defaultTime
+                time: this._defaultTime,
+                aggregateTimes: options.timeDimension._aggregateTimes
             });
         }).bind(this));
     },
@@ -75,7 +78,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         }
     },
 
-    _update: function() {
+    _update: function(e) {
         if (!this._map)
             return;
         var time = this._timeDimension.getCurrentTime();
@@ -89,7 +92,8 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         if (!this._map.hasLayer(layer)) {
             this._map.addLayer(layer);
         } else {
-            this._showLayer(layer, time);
+            var aggregateTimes = (e.aggregateTimes)?(e.aggregateTimes):(false);
+            this._showLayer(layer, time, aggregateTimes);
         }
     },
 
@@ -137,14 +141,14 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         }
     },
 
-    _evictCachedTimes: function(keepforward, keepbackward) {
+    _evictCachedTimes: function(keepforward, keepbackward, aggregateTimes) {
         // Cache management
         var times = this._getLoadedTimes();
         var strTime = String(this._currentTime);
         var index = times.indexOf(strTime);
         var remove = [];
         // remove times before current time
-        if (keepbackward > -1) {
+        if (keepbackward > -1 && !aggregateTimes) {
             var objectsToRemove = index - keepbackward;
             if (objectsToRemove > 0) {
                 remove = times.splice(0, objectsToRemove);
@@ -160,9 +164,23 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
             }
         }
     },
-    _showLayer: function(layer, time) {
+    _showLayer: function(layer, time, aggregateTimes) {
         if (this._currentLayer && this._currentLayer !== layer) {
-            this._currentLayer.hide();
+            var currentIndex=this._availableTimes.indexOf(this._currentTime),
+            newIndex=this._availableTimes.indexOf(time);
+
+            if (aggregateTimes) {
+                
+                if(Math.abs(currentIndex-newIndex)>1) {
+                    // identify if new slider position jumping more than one point in timeline and invalidate the correspondente layers.
+                    this._hideForwardLayers(newIndex);
+                }else if(currentIndex>newIndex){
+                    // if new slider position jumps one position to backward so hide current layer.
+                    this._currentLayer.hide();
+                }
+            } else {
+                this._currentLayer.hide();
+            }
         }
         layer.show();
         if (this._currentLayer && this._currentLayer === layer) {
@@ -172,7 +190,24 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         this._currentTime = time;
         console.log('Show layer ' + layer.wmsParams.layers + ' with time: ' + new Date(time).toISOString());
 
-        this._evictCachedTimes(this._timeCacheForward, this._timeCacheBackward);
+        this._evictCachedTimes(this._timeCacheForward, this._timeCacheBackward, aggregateTimes);
+    },
+
+    _hideForwardLayers: function (newIndex) {
+        
+        this._availableTimes.forEach((v,i)=>{
+            if(this._layers[v]) {
+                if(i>newIndex){
+                    this._layers[v].hide();
+                    this._layers[v].redraw();
+                }else{
+                    if(!this._layers[v]._visible){
+                        this._layers[v].show();
+                        this._layers[v].redraw();
+                    }
+                }
+            }
+        });
     },
 
     _getLayerForTime: function(time) {
