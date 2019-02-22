@@ -156,7 +156,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
             }
         }
         if (keepforward > -1) {
-            index = times.indexOf(strTime);
+            if(aggregateTimes) keepforward=0;
             var objectsToRemove = times.length - index - keepforward - 1;
             if (objectsToRemove > 0) {
                 remove = times.splice(index + keepforward + 1, objectsToRemove);
@@ -173,7 +173,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
                 
                 if(Math.abs(currentIndex-newIndex)>1) {
                     // identify if new slider position jumping more than one point in timeline and invalidate the correspondente layers.
-                    this._hideForwardLayers(newIndex);
+                    this._evaluateCachedLayers(newIndex);
                 }else if(currentIndex>newIndex){
                     // if new slider position jumps one position to backward so hide current layer.
                     this._currentLayer.hide();
@@ -193,18 +193,30 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         this._evictCachedTimes(this._timeCacheForward, this._timeCacheBackward, aggregateTimes);
     },
 
-    _hideForwardLayers: function (newIndex) {
+    _evaluateCachedLayers: function (newIndex) {
         
         this._availableTimes.forEach((v,i)=>{
-            if(this._layers[v]) {
-                if(i>newIndex){
+            if(i>newIndex){
+                if(this._layers[v]) {
                     this._layers[v].hide();
                     this._layers[v].redraw();
+                }
+            }else{
+                if(this._layers[v]) {
+                    this._layers[v].show();
+                    // to force request data for layer when redraw.
+                    this._layers[v].setLoaded(false);
+                    this._layers[v].redraw();
                 }else{
-                    if(!this._layers[v]._visible){
-                        this._layers[v].show();
-                        this._layers[v].redraw();
+                    // Create new layer to fill gap in the past.
+                    var newLayer = this._createLayerForTime(v);
+                    this._layers[v] = newLayer;
+                    if (this._map && !this._map.hasLayer(newLayer)) {
+                        this._map.addLayer(newLayer);
                     }
+                    newLayer.on('load', (function(layer) {
+                        layer.setLoaded(true);
+                    }).bind(this, newLayer));
                 }
             }
         });
