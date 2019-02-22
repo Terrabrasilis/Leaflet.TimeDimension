@@ -80,7 +80,15 @@
 /**
 * Slider/Knobs styles
 */
-
+.timecontrol-aggregate{
+    margin-left: 3px;
+}
+.timecontrol-aggregate-toggle {
+    margin-bottom: 0px;
+    vertical-align: -webkit-baseline-middle;
+    padding-left: 2px;
+    padding-right: 2px;
+}
 .timecontrol-slider .slider {
     position: relative;
     height: 12px;

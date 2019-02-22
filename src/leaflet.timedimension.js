@@ -30,6 +30,14 @@ L.TimeDimension = (L.Layer || L.Class).extend({
         }
     },
 
+    setAggregateTime: function (value) {
+        this._aggregateTimes=value;
+    },
+
+    getAggregateTime: function () {
+        return this._aggregateTimes;
+    },
+
     getAvailableTimes: function () {
         return this._availableTimes;
     },

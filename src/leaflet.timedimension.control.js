@@ -119,6 +119,7 @@ L.Control.TimeDimension = L.Control.extend({
         playReverseButton: false,
         loopButton: false,
         displayDate: true,
+        displayAggregateTime: true,
         timeSlider: true,
         timeSliderDragUpdate: false,
         limitSliders: false,
@@ -182,6 +183,9 @@ L.Control.TimeDimension = L.Control.extend({
         }
         if (this.options.speedSlider) {
             this._sliderSpeed = this._createSliderSpeed(this.options.styleNS + ' timecontrol-slider timecontrol-speed', container);
+        }
+        if (this.options.displayAggregateTime) {
+            this._displayAggregateTime = this._createToggle('Aggregate', container);
         }
 
         this._steps = this.options.timeSteps || 1;
@@ -327,6 +331,25 @@ L.Control.TimeDimension = L.Control.extend({
                 this._displayDate.innerHTML = this._getDisplayNoTimeError();
             }
         }
+    },
+
+    _createToggle: function(title, container) {
+        var inputLabel = L.DomUtil.create('label', 'timecontrol-aggregate-toggle', container);
+        inputLabel.innerText=' '+title;
+        inputLabel.htmlFor='label_'+title;
+
+        var input = L.DomUtil.create('input', this.options.styleNS + ' timecontrol-' + title.toLowerCase(), container);
+        input.type="checkbox";
+        input.title = title;
+        input.id='label_'+title;
+        input.checked = this._timeDimension.getAggregateTime();
+
+        L.DomEvent
+            .addListener(input, 'change', L.DomEvent.stopPropagation)
+            .addListener(input, 'change', L.DomEvent.preventDefault)
+            .addListener(input, 'change', this['_button' + title.replace(/ /i, '') + 'Clicked'], this);
+
+        return input;
     },
 
     _createButton: function(title, container) {
@@ -560,6 +583,10 @@ L.Control.TimeDimension = L.Control.extend({
 
     _buttonDateClicked: function(){
         this._switchTimeZone();
+    },
+
+    _buttonAggregateClicked: function(){
+        this._timeDimension.setAggregateTime(this._displayAggregateTime.checked);
     },
 
     _sliderTimeValueChanged: function(newValue) {
