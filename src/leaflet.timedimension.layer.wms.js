@@ -193,7 +193,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
     _evaluateCachedLayers: function (newIndex) {
         
-        this._availableTimes.forEach((v,i)=>{
+        this._availableTimes.forEach(function(v,i){
             if(i>newIndex){
                 if(this._layers[v]) {
                     this._layers[v].hide();
