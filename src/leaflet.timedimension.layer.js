@@ -33,6 +33,7 @@ L.TimeDimension.Layer = (L.Layer || L.Class).extend({
         }
         this._timeDimension.on("timeloading", this._onNewTimeLoading, this);
         this._timeDimension.on("timeload", this._update, this);
+        this._timeDimension.on("startaggregation", this._startAggregationTimeDimension, this);
         this._timeDimension.registerSyncedLayer(this);
         this._update();
     },
@@ -41,6 +42,7 @@ L.TimeDimension.Layer = (L.Layer || L.Class).extend({
         this._timeDimension.unregisterSyncedLayer(this);
         this._timeDimension.off("timeloading", this._onNewTimeLoading, this);
         this._timeDimension.off("timeload", this._update, this);
+        this._timeDimension.off("startaggregation", this._startAggregationTimeDimension, this);
         this.eachLayer(map.removeLayer, map);
         this._map = null;
     },
@@ -86,6 +88,11 @@ L.TimeDimension.Layer = (L.Layer || L.Class).extend({
         }
         this._currentLayer.bringToFront();
         return this;
+    },
+
+    _startAggregationTimeDimension: function(ev) {
+        this._baseLayer._visible=false;
+        this._baseLayer.redraw();
     },
 
     _onNewTimeLoading: function(ev) {

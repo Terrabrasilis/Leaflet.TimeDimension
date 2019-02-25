@@ -268,6 +268,11 @@ L.TimeDimension = (L.Layer || L.Class).extend({
 
     _onSyncedLayerLoaded: function (e) {
         if (e.time == this._availableTimes[this._loadingTimeIndex] && this._checkSyncedLayersReady(e.time)) {
+            if(this._aggregateTimes && this._currentTimeIndex<0) {
+                this.fire('startaggregation', {
+                    aggregateTimes: this._aggregateTimes
+                });
+            }
             this._newTimeIndexLoaded();
         }
     },

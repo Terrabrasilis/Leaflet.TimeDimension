@@ -26,8 +26,6 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
         this._baseLayer.on('load', (function() {
             this._baseLayer.setLoaded(true);
-            this._baseLayer._visible=!options.timeDimension._aggregateTimes;
-            this._baseLayer.redraw();
             this.fire('timeload', {
                 time: this._defaultTime,
                 aggregateTimes: options.timeDimension._aggregateTimes
